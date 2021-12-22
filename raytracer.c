@@ -14,15 +14,14 @@
 #define HEIGHT 600
 #define THREAD_NUM 4
 
- 	 unsigned char img[3 * WIDTH * HEIGHT];
-
 
 sem_t sema;
+int counter = 0;
 
-typedef struct {
+typedef struct pointer{
 	unsigned char *image;
-	int *i ;
-}pointerImage;
+	int *index ;
+}pointer_temp;
 
 
 /* The vector structure */
@@ -238,13 +237,17 @@ void init(){
 }
 
 void* draw(void* args){
-	sem_wait(&sema);
-	pointerImage temp = *(pointerImage*)args;
-	temp.i++;
+
+	pointer_temp p = *(pointer_temp*)args;
+	int temp = *(int*) p.index;
+	temp++;
+
+	unsigned char image_temp= *(unsigned char*) p.image;
 	init();
 	int x, y;
-	printf("%d",((int)temp.i);
-  for (y = --(*temp.i); y < (*temp.i)*HEIGHT/THREAD_NUM; y++) {
+	//printf("%d\n",temp);
+  for (y = ((temp-1)*HEIGHT/THREAD_NUM); y < (temp)*HEIGHT/THREAD_NUM; y++) {
+
     for (x = 0; x < WIDTH; x++) {
 
       float red = 0;
@@ -320,27 +323,35 @@ void* draw(void* args){
 
       } while ((coef > 0.0f) && (level < 15));
 
-      img[(x + y * WIDTH) * 3 + 0] = (unsigned char) min(red * 255.0f, 255.0f);
-      img[(x + y * WIDTH) * 3 + 1] = (unsigned char) min(green * 255.0f, 255.0f);
-      img[(x + y * WIDTH) * 3 + 2] = (unsigned char) min(blue * 255.0f, 255.0f);
+      p.image[(x + y * WIDTH) * 3 + 0] = (unsigned char) min(red * 255.0f, 255.0f);
+      p.image[(x + y * WIDTH) * 3 + 1] = (unsigned char) min(green * 255.0f, 255.0f);
+      p.image[(x + y * WIDTH) * 3 + 2] = (unsigned char) min(blue * 255.0f, 255.0f);
+	sem_wait(&sema);
+	counter++;
+	printf("%d  \n",counter);
+	sem_post(&sema);
+
+
     }
   }
-	sem_post(&sema);
 	free(args);
 
 }
 
 
 int main(int argc, char * argv[]) {
+	unsigned char img[3 * WIDTH * HEIGHT];
 	
 
 	pthread_t th[THREAD_NUM];
 	sem_init(&sema,0,1);
 	for(int i=0;i<THREAD_NUM;i++){
-		pointerImage *x=malloc(sizeof(pointerImage*));
-		x->i=malloc(sizeof(int));
-		*x->i = i;
+		pointer_temp *x=malloc(sizeof(pointer_temp*));
+		x->index=malloc(sizeof(int));
+		x->image=malloc(sizeof(char));
 
+		*x->index = i;
+		x->image = img;
 
 		pthread_create(&th[i],NULL,&draw,x);
 	}
@@ -357,3 +368,4 @@ int main(int argc, char * argv[]) {
 	sem_destroy(&sema);
   return 0;
 }
+
